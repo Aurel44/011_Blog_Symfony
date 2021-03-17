@@ -4,7 +4,9 @@ namespace App\Controller;
 
 use App\Entity\Article;
 use App\Entity\Category;
+use App\Entity\Comment;
 use App\Form\ArticleType;
+use App\Form\CommentType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
@@ -30,7 +32,6 @@ class BlogController extends AbstractController
             'articles' => $articles
         ]);
     }
-
     /**
      * @Route("/", name="home")
      */
@@ -44,8 +45,6 @@ class BlogController extends AbstractController
             ]
         );
     }
-
-
     /**
      * @Route("/blog/new", name="blog_create")
      * @Route("/blog/{id}/edit", name="blog_edit")
@@ -81,25 +80,41 @@ class BlogController extends AbstractController
             'editMode' => $article->getId() !== null
         ]);
     }
-
-
-
-
-
     /**
      * @Route("/blog/{id}", name="blog_show")
      */
-    public function show($id)
+    public function show($id, Request $request)
     {
         $repo = $this->getDoctrine()->getRepository(Article::class);
         $article = $repo->find($id);
-        
+
         $repo1 = $this->getDoctrine()->getRepository(Category::class);
         $category = $repo1->find($id);
 
+        $comment = new Comment();
+        $form = $this->createForm(CommentType::class, $comment);
+
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+
+            $manager = $this->getDoctrine()->getManager();
+
+            $comment->setCreateAt(new \DateTime());
+            $comment->setArticle($article);
+
+
+            $manager->persist($comment);
+            $manager->flush();
+
+            return $this->redirectToRoute('blog_show', ['id' => $article->getId()]);
+        }
+
+
         return $this->render('blog/show.html.twig', [
             'article' => $article,
-            'category' => $category
+            'category' => $category,
+            'commentForm' => $form->createView()
         ]);
     }
 }
